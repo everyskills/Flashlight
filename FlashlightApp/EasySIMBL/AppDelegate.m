@@ -4,6 +4,12 @@
  * http://www.opensource.org/licenses/gpl-2.0.php
  */
 
+@import AppCenter;
+@import AppCenterAnalytics;
+@import AppCenterCrashes;
+
+@import Sparkle;
+
 #import <ServiceManagement/SMLoginItem.h>
 #import "AppDelegate.h"
 #import "ITSwitch+Additions.h"
@@ -38,7 +44,10 @@
 {
     NSLocalizedString(@"Flashlight: the missing plugin system for Spotlight.", @"");
     
-//    [Crashlytics startWithAPIKey:@"c00a274f2c47ad5ee89b17ccb2fdb86e8d1fece8"];
+    [MSAppCenter start:@"13c29169-8f56-4883-a694-4fadcc1a1560" withServices:@[
+      [MSAnalytics class],
+      [MSCrashes class]
+    ]];
     
     self.SIMBLOn = YES;
     
@@ -63,6 +72,21 @@
     [UpdateChecker shared]; // begin fetch
     
     [self setupURLHandling];
+    
+    NSSize layoutSize = [_changeLog maxSize];
+    layoutSize.width = layoutSize.height;
+    [_changeLog setMaxSize:layoutSize];
+    [[_changeLog textContainer] setWidthTracksTextView:NO];
+    [[_changeLog textContainer] setContainerSize:layoutSize];
+    [[_changeLog textStorage] setAttributedString:[[NSAttributedString alloc] initWithURL:[[NSBundle mainBundle] URLForResource:@"Credits" withExtension:@"rtf"] options:[[NSDictionary alloc] init] documentAttributes:nil error:nil]];
+    [(NSScrollView*)_changeLog.superview.superview setHasHorizontalScroller:YES];
+    
+    [_buttonAdvert setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
+    [_buttonDiscord setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
+    [_buttonFeedback setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
+    
+    [self updateAdButton];
+    [NSTimer scheduledTimerWithTimeInterval:30.0 target:self selector:@selector(keepThoseAdsFresh) userInfo:nil repeats:YES];
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
@@ -195,6 +219,14 @@
     NSString *dstPath = @"/Library/Application Support/SIMBL/Plugins/SpotlightSIMBL.bundle";
     NSString *srcBndl = [[NSBundle mainBundle] pathForResource:@"SpotlightSIMBL.bundle/Contents/Info" ofType:@"plist"];
     NSString *dstBndl = @"/Library/Application Support/SIMBL/Plugins/SpotlightSIMBL.bundle/Contents/Info.plist";
+    
+    if ([NSWorkspace.sharedWorkspace URLForApplicationWithBundleIdentifier:@"com.w0lf.MacForge"]) {
+        srcPath = [[NSBundle mainBundle] pathForResource:@"SpotlightSIMBL" ofType:@"bundle"];
+        dstPath = @"/Library/Application Support/MacEnhance/Plugins/SpotlightSIMBL.bundle";
+        srcBndl = [[NSBundle mainBundle] pathForResource:@"SpotlightSIMBL.bundle/Contents/Info" ofType:@"plist"];
+        dstBndl = @"/Library/Application Support/MacEnhance/Plugins/SpotlightSIMBL.bundle/Contents/Info.plist";
+    }
+    
     if ([[NSFileManager defaultManager] fileExistsAtPath:dstBndl]){
         NSString *srcVer = [[[NSMutableDictionary alloc] initWithContentsOfFile:srcBndl] objectForKey:@"CFBundleVersion"];
 //#ifdef DEBUG
@@ -225,10 +257,17 @@
     [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/w0lfschild/Flashlight"]];
 }
 - (IBAction)leaveFeedback:(id)sender {
-    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"http://flashlight.nateparrott.com/feedback"]];
+    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/w0lfschild/Flashlight/issues/new"]];
+}
+- (IBAction)visitDiscord:(id)sender {
+        [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://discord.gg/zjCHuew"]];
+}
+- (IBAction)visit_ad:(id)sender {
+    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:_adURL]];
+    [MSAnalytics trackEvent:@"Visit ad" withProperties:@{@"URL" : _adURL}];
 }
 - (IBAction)requestAPlugin:(id)sender {
-    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"http://flashlight.nateparrott.com/ideas"]];
+    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://github.com/w0lfschild/Flashlight/issues/new"]];
 }
 
 #pragma mark Links
@@ -318,6 +357,96 @@
         [[NSWorkspace sharedWorkspace] selectFile:[[NSBundle mainBundle] bundlePath] inFileViewerRootedAtPath:@""];
         [NSApp performSelector:@selector(terminate:) withObject:nil afterDelay:0.5];
     }
+}
+
+#pragma mark Ad button
+- (void)keepThoseAdsFresh {
+    if (_adArray != nil) {
+        if (!_buttonAdvert.hidden) {
+            NSInteger arraySize = _adArray.count;
+            NSInteger displayNum = (NSInteger)arc4random_uniform((int)[_adArray count]);
+            if (displayNum == _lastAD) {
+                displayNum++;
+                if (displayNum >= arraySize)
+                    displayNum -= 2;
+                if (displayNum < 0)
+                    displayNum = 0;
+            }
+            _lastAD = displayNum;
+            NSDictionary *dic = [_adArray objectAtIndex:displayNum];
+            NSString *name = [dic objectForKey:@"name"];
+            name = [NSString stringWithFormat:@"      %@", name];
+            NSString *url = [dic objectForKey:@"homepage"];
+            [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context){
+                [context setDuration:1.25];
+                [[self->_buttonAdvert animator] setTitle:name];
+            } completionHandler:^{
+            }];
+            if (url)
+                _adURL = url;
+            else
+                _adURL = @"https://github.com/w0lfschild/MacForge";
+        }
+    }
+}
+
+- (void)updateAdButton {
+    // Local ads
+    NSArray *dict = [[NSArray alloc] initWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"ads" ofType:@"plist"]];
+    NSInteger displayNum = (NSInteger)arc4random_uniform((int)[dict count]);
+    NSDictionary *dic = [dict objectAtIndex:displayNum];
+    NSString *name = [dic objectForKey:@"name"];
+    name = [NSString stringWithFormat:@"    %@", name];
+    NSString *url = [dic objectForKey:@"homepage"];
+    
+    [_buttonAdvert setTitle:name];
+    if (url)
+        _adURL = url;
+    else
+        _adURL = @"https://github.com/w0lfschild/MacForge";
+    
+    _adArray = dict;
+    _lastAD = displayNum;
+    
+    // Check web for new ads
+
+    // 1
+    NSURL *dataUrl = [NSURL URLWithString:@"https://github.com/w0lfschild/app_updates/raw/master/Flashlight/ads.plist"];
+    
+    // 2
+    NSURLSessionDataTask *downloadTask = [[NSURLSession sharedSession]
+                                          dataTaskWithURL:dataUrl completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+                                              // 4: Handle response here
+                                              NSPropertyListFormat format;
+                                              NSError *err;
+                                              NSArray *dict = (NSArray*)[NSPropertyListSerialization propertyListWithData:data
+                                                                                                                  options:NSPropertyListMutableContainersAndLeaves
+                                                                                                                   format:&format
+                                                                                                                    error:&err];
+                                              // NSLog(@"mySIMBL : %@", dict);
+                                              if (dict) {
+                                                  dispatch_async(dispatch_get_main_queue(), ^{
+                                                      NSInteger displayNum = (NSInteger)arc4random_uniform((int)[dict count]);
+                                                      NSDictionary *dic = [dict objectAtIndex:displayNum];
+                                                      NSString *name = [dic objectForKey:@"name"];
+                                                      name = [NSString stringWithFormat:@"      %@", name];
+                                                      NSString *url = [dic objectForKey:@"homepage"];
+                                                      
+                                                      [self->_buttonAdvert setTitle:name];
+                                                      if (url)
+                                                          self->_adURL = url;
+                                                      else
+                                                          self->_adURL = @"https://github.com/w0lfschild/MacForge";
+                                                      
+                                                      self->_adArray = dict;
+                                                      self->_lastAD = displayNum;
+                                                  });
+                                              }
+                                              
+                                          }];
+    
+    // 3
+    [downloadTask resume];
 }
 
 @end

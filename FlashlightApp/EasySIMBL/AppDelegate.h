@@ -11,6 +11,16 @@
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>
 
+// ADS
+@property (readwrite, nonatomic) NSString* adURL;
+@property (readwrite, nonatomic) NSArray* adArray;
+@property (readwrite, nonatomic) NSInteger lastAD;
+@property IBOutlet NSButton *buttonAdvert;
+
+@property IBOutlet NSButton *buttonDiscord;
+@property IBOutlet NSButton *buttonFeedback;
+@property IBOutlet NSTextView       *changeLog;
+
 @property (nonatomic) NSString *loginItemBundleIdentifier;
 @property (nonatomic) NSString *loginItemPath;
 
