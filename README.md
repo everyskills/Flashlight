@@ -1,4 +1,4 @@
-## Flashlight (for macOS 10.10+)
+## Flashlight for macOS 10.10 - 10.15
 
 Flashlight is an **unofficial Spotlight API** that allows you to programmatically process queries and add additional results.
 
@@ -8,11 +8,14 @@ Flashlight is an **unofficial Spotlight API** that allows you to programmaticall
 
 ## Installation (requires System Integrity Protection to be disabled)
 
-1. Download and open [MacForge](https://github.com/w0lfschild/app_updates/raw/master/MacForge/MacForge.zip)
-2. Install [Flashlight](https://www.macenhance.com/mflink?macforge://github.com/w0lfschild/myRepo/raw/master/mytweaks/com.nateparrott.Flashlight)
+1. Download and open [MacForge](https://github.com/w0lfschild/app_updates/raw/master/MacForge1/MacForge.zip)
+2. Install [Flashlight](https://www.macenhance.com/mflink?com.nateparrott.Flashlight)
 3. Open `Flashlight` and install the plugins you want to use
 4. Start using _Flashlight_
 
+## Big Sur
+
+Significant changes have been made to Spotlight in Big Sur add that on top of the fact Flashlight was already partly broken in recent releases, around 10.15.5 and beyond, I've decided to discontinue my efforts in this project. There are also not many users 387 on v1.2 according to analytics.
 
 ## Writing Plugins
 
